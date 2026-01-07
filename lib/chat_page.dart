@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:pusher_channels_flutter/pusher_channels_flutter.dart';
+
+import 'package:http/http.dart' as http;
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key, required this.room});
@@ -26,26 +29,6 @@ class _ChatPageState extends State<ChatPage> {
   @override
   void initState() {
     super.initState();
-
-    // Dummy items for now
-    _items.addAll([
-      _ChatItem(
-        sender: 'system',
-        text: 'Joined room "${widget.room}"',
-        timestamp: DateTime.now(),
-      ),
-      _ChatItem(
-        sender: 'alice',
-        text: 'Hello 👋 (dummy)',
-        timestamp: DateTime.now(),
-      ),
-      _ChatItem(
-        sender: 'bob',
-        text: 'This is a placeholder chat list.',
-        timestamp: DateTime.now(),
-      ),
-    ]);
-
     unawaited(_connectAndSubscribe());
   }
 
@@ -53,8 +36,7 @@ class _ChatPageState extends State<ChatPage> {
     // IMPORTANT: Replace these with your Pusher Channels credentials.
     // Keeping placeholders so the app still runs without crashing.
     const apiKey = String.fromEnvironment('PUSHER_API_KEY', defaultValue: '');
-    const cluster =
-        String.fromEnvironment('PUSHER_CLUSTER', defaultValue: '');
+    const cluster = String.fromEnvironment('PUSHER_CLUSTER', defaultValue: '');
 
     if (apiKey.isEmpty || cluster.isEmpty) {
       _addSystemMessage(
@@ -118,22 +100,28 @@ class _ChatPageState extends State<ChatPage> {
     });
   }
 
-  void _sendMessage() {
+  void _sendMessage() async {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
 
-    setState(() {
-      _items.add(
-        _ChatItem(sender: 'me', text: text, timestamp: DateTime.now()),
-      );
-    });
+    const url = 'http://localhost:3000/send';
+    final payload = {
+      "message": text,
+      "data": "text",
+      "event": "send-message",
+      "channel": _channelName,
+    };
 
-    _messageController.clear();
-    _scrollToBottom();
+    final response = await http.post(
+      Uri.parse(url),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(payload),
+    );
 
-    // NOTE: Client events require presence/private channels and auth.
-    // For now this is UI-only. Once you have auth configured, you can trigger
-    // a client event like: _pusher.trigger(PusherEvent(...)).
+    if (response.statusCode == 200) {
+      _messageController.clear();
+      _scrollToBottom();
+    }
   }
 
   @override
@@ -152,9 +140,7 @@ class _ChatPageState extends State<ChatPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Room: ${widget.room}'),
-      ),
+      appBar: AppBar(title: Text('Room: ${widget.room}')),
       body: Column(
         children: [
           Expanded(
@@ -168,13 +154,16 @@ class _ChatPageState extends State<ChatPage> {
                 final isMe = item.sender == 'me';
 
                 return Align(
-                  alignment:
-                      isMe ? Alignment.centerRight : Alignment.centerLeft,
+                  alignment: isMe
+                      ? Alignment.centerRight
+                      : Alignment.centerLeft,
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       color: isMe
                           ? Theme.of(context).colorScheme.primaryContainer
-                          : Theme.of(context).colorScheme.surfaceContainerHighest,
+                          : Theme.of(
+                              context,
+                            ).colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Padding(
@@ -188,13 +177,11 @@ class _ChatPageState extends State<ChatPage> {
                         children: [
                           Text(
                             item.sender,
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelMedium
+                            style: Theme.of(context).textTheme.labelMedium
                                 ?.copyWith(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
                                 ),
                           ),
                           const SizedBox(height: 4),
@@ -241,7 +228,11 @@ class _ChatPageState extends State<ChatPage> {
 }
 
 class _ChatItem {
-  _ChatItem({required this.sender, required this.text, required this.timestamp});
+  _ChatItem({
+    required this.sender,
+    required this.text,
+    required this.timestamp,
+  });
 
   final String sender;
   final String text;

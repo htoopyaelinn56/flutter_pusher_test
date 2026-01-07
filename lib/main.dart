@@ -6,6 +6,9 @@ final pusher = PusherChannelsFlutter.getInstance();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  const apiKey = String.fromEnvironment('PUSHER_API_KEY', defaultValue: '');
+  const cluster = String.fromEnvironment('PUSHER_CLUSTER', defaultValue: '');
+  await pusher.init(apiKey: apiKey, cluster: cluster);
   runApp(const MainApp());
 }
 

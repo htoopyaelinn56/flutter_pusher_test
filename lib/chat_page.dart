@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'package:pusher_channels_flutter/pusher_channels_flutter.dart';
@@ -47,17 +48,11 @@ class _ChatPageState extends State<ChatPage> {
     }
 
     try {
-      await _pusher.init(
-        apiKey: apiKey,
-        cluster: cluster,
-        onConnectionStateChange: (currentState, previousState) {
-          _addSystemMessage('Connection: $previousState → $currentState');
-        },
-        onError: (message, code, error) {
-          _addSystemMessage('Pusher error ($code): $message');
-        },
-        onSubscriptionSucceeded: (channelName, data) {
-          _addSystemMessage('Subscribed to $channelName');
+      await _pusher.connect();
+      await _pusher.subscribe(
+        channelName: _channelName,
+        onSubscriptionSucceeded: (data) {
+          _addSystemMessage('Subscribed to $_channelName');
         },
         onEvent: (event) {
           // You can standardize on event.eventName == 'message' and JSON payload.
@@ -73,10 +68,8 @@ class _ChatPageState extends State<ChatPage> {
           _scrollToBottom();
         },
       );
-
-      await _pusher.connect();
-      await _pusher.subscribe(channelName: _channelName);
-    } catch (e) {
+    } catch (e,st ) {
+      log('$e $st', name: 'pusher_subscription_error');
       _addSystemMessage('Failed to init/subscribe Pusher: $e');
     }
   }

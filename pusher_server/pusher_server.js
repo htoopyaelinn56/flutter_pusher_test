@@ -29,8 +29,13 @@ app.listen(port, () => {
 // send message by payload message
 app.post("/send", (req, res) => {
     // Accessing message from the request body
-    const pusherData = req.body || { message: "Hello from Pusher server!" };
-    pusher.trigger("room-general", "message-event", pusherData)
+    const pusherData = req.body || {};
+    const {
+        channel = "room-general",
+        event = "message-event"
+    } = pusherData;
+
+    pusher.trigger(channel, event, pusherData)
         .then(r => {
             console.log("Event triggered: ", r);
             // show JSON encode pusher data

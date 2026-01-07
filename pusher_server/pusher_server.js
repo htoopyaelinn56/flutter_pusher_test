@@ -29,12 +29,12 @@ app.listen(port, () => {
 // send message by payload message
 app.post("/send", (req, res) => {
     // Accessing message from the request body
-    const message = req.body.message || "hello world";
-
-    pusher.trigger("room-general", "message-event", { message: message })
+    const pusherData = req.body || { message: "Hello from Pusher server!" };
+    pusher.trigger("room-general", "message-event", pusherData)
         .then(r => {
             console.log("Event triggered: ", r);
-            res.send(`Message sent: ${message}`);
+            // show JSON encode pusher data
+            res.send(`Message sent: ${JSON.stringify(pusherData)}`);
         })
         .catch(err => {
             console.error("Error triggering event:", err);
